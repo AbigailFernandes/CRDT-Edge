@@ -9,7 +9,7 @@ const routes = (app) => {
     app.route('/todo/:user_id')
         .get(getTodo)
  
-    app.route('/todo/:user_id/:item_id')
+    app.route('/todo/:user_id/:task_id')
         .put(updateTodo)
         .delete(deleteTodo)
 
