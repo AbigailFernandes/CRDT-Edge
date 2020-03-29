@@ -13,7 +13,7 @@ const routes = (app) => {
         .put(updateTodo)
         .delete(deleteTodo)
 
-    app.route('/merge_todo')
+    app.route('/merge')
         .post(mergeState)
 }
  
