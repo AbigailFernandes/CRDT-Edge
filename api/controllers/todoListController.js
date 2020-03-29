@@ -1,4 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
+var fs = require('fs');
+const https = require('https');
 const Automerge = require('automerge')
 let todos = {
     'abigail':[
@@ -27,6 +29,9 @@ let todos = {
     ]
 }
 let doc = Automerge.from(todos)
+let contents = fs.readFileSync('config.json', 'utf8');
+let addresses = JSON.parse(contents);
+console.log(addresses)
 // add new todo item to the database
 export function addNewTodo(req, res) {
     console.log('POST called')
@@ -43,6 +48,7 @@ export function addNewTodo(req, res) {
     doc = Automerge.change(doc, 'Add Todo', doc => {
         doc[user_id].push(todo)
     })
+    broadcast()
     res.json({
         'task_id' : task_id
     })
@@ -74,6 +80,7 @@ export function updateTodo(req, res) {
             break
         }
     }
+    broadcast()
     res.json('Done')
 }
  
@@ -93,12 +100,46 @@ export function deleteTodo(req, res) {
             doc = doc[req.params.user_id].splice(indexToDelete, 1)
         })
     }
+    broadcast()
     res.json('Delete Todo called, user_id: ' + req.params.user_id + ' ,task_id: ' + req.params.item_id)
 }
 
 export function mergeState(req, res) {
     console.log('Merge State called')
     res.json('Merge State called')
-    merge_doc = req.body
+    console.log(req.body)
+    let merge_doc = Automerge.from(req.body)
     doc = Automerge.merge(doc, merge_doc)
+}
+
+function broadcast() {
+    console.log(JSON.stringify(doc))
+    for(let i = 0; i < addresses['servers'].length; ++i) {
+        const options = {
+          hostname: addresses['servers'][i]['ip'],
+          port: addresses['servers'][i]['port'],
+          path: '/merge',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': JSON.stringify(doc).length.toString(),
+            'gzip':true
+          }
+        }
+
+        const req = https.request(options, res => {
+          console.log(`statusCode: ${res.statusCode}`)
+
+          // res.on('data', d => {
+          //   process.stdout.write(d)
+          // })
+        })
+
+        req.on('error', error => {
+          console.error(error)
+        })
+
+        req.write(JSON.stringify(doc))
+        req.end()
+    }
 }

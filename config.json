@@ -1,0 +1,21 @@
+{
+    "servers": [
+        {
+            "ip": "localhost",
+            "port": 50001
+        },
+        {
+            "ip": "localhost",
+            "port": 50002
+        },
+        {
+            "ip": "localhost",
+            "port": 50003
+        },
+        {
+            "ip": "localhost",
+            "port": 50004
+        }
+
+    ]
+}
