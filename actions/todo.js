@@ -1,44 +1,61 @@
 const Automerge = require('automerge');
 const uuid = require('uuid');
+const redis =require('redis');
+
 const uuidv4 = uuid.v4
 
-let todos = {
-    'abigail':[
-        {
-            'id': "1",
-            'description': 'Complete everything',
-            'done' : 'False'
-        },
-        {
-            'id': 2,
-            'description': 'Talk to Sanchit',
-            'done' : 'False'
-        }
-    ],
-    'biljith': [
-        {
-            'id': "1",
-            'description': 'Learn JavaScript',
-            'done' : 'False'
-        },
-        {
-            'id': "2",
-            'description': 'Code the endpoints',
-            'done' : 'False'
-        }
-    ]
-};
+/**
+ * REDIS config
+ */
+const redisPort = 6379;
+const redisPassword = "2020coronavirus2020";
+//////////
 
-todos = Automerge.from(todos)
+const redisClient = redis.createClient({
+  port: redisPort,
+  host: "10.128.0.17",
+  password: redisPassword
+});
 
-function getTodo(params) {
+redisClient.on('error', err => {
+  console.log('Error: ' + err);
+});
+
+redisClient.on('connect', () => {
+  console.info('Redis client connected');
+});
+
+// todos = Automerge.from(todos)
+
+async function getTodo(params) {
     const method = params.__ow_method
+
+    todos = await new Promise((resolve, reject) => { redisClient.get('todos', (err,res) => {
+        if (err) {
+            resolve(Automerge.from({}));
+          } else {
+            resolve(JSON.parse(res));
+          }
+    })});
+
+    setTodosInCache = async (todos) =>{
+        await new Promise((resolve, reject) => { redisClient.set('todos',todos, (err,res) => {
+            if (err) {
+                console.log("it is a disaster...")
+                reject();
+              } else {
+                resolve();
+              }
+        })});
+    }
+
     if (method == 'get') {
+        //check if redisclient is null or undefined
         return {
-            body: {
-                todo: todos
-            },
-            statusCode: 200
+            body:{ 
+                todo: todos,
+                statusCode: 200
+            }
         }
     }
     else if (method == 'post') {
@@ -59,6 +76,10 @@ function getTodo(params) {
                 todos[user_id].push(todo)
             }  
         });
+        
+        //update in cache...should be blocking.......
+        setTodosInCache(todos);
+
         return {
             body: {
                 task_id: task_id
@@ -84,6 +105,8 @@ function getTodo(params) {
                 todos = Automerge.change(todos, 'Delete Todo', todos => {
                     todos = todos[user_id].splice(deleteIndex, 1)
                 });
+                //update in cache...should be blocking.......
+                setTodosInCache(todos);
                 return {
                     body: {
                         Response: todos[user_id]
@@ -133,6 +156,10 @@ function getTodo(params) {
                         todos[user_id][updateIndex].done = params.done
                     }
                 });
+
+                //update in cache...should be blocking.......
+                setTodosInCache(todos);
+
                 return {
                     body: {
                         Response: todos[user_id][updateIndex]
