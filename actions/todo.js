@@ -53,10 +53,10 @@ async function getTodo(params) {
         //check if redisclient is null or undefined
         return {
             body:{ 
-                todo: todos,
+                todo: todos
+            },
                 statusCode: 200
             }
-        }
     }
     else if (method == 'post') {
         const user_id = params.user_id;
