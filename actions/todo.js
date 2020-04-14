@@ -1,39 +1,44 @@
+const fs = require('fs');
 const Automerge = require('automerge');
 const uuid = require('uuid');
 const uuidv4 = uuid.v4
+const request = require('request');
 
-let todos = {
-    'abigail':[
-        {
-            'id': "1",
-            'description': 'Complete everything',
-            'done' : 'False'
-        },
-        {
-            'id': 2,
-            'description': 'Talk to Sanchit',
-            'done' : 'False'
-        }
-    ],
-    'biljith': [
-        {
-            'id': "1",
-            'description': 'Learn JavaScript',
-            'done' : 'False'
-        },
-        {
-            'id': "2",
-            'description': 'Code the endpoints',
-            'done' : 'False'
-        }
-    ]
-};
+todos = Automerge.init()
 
-todos = Automerge.from(todos)
+function broadcast(data) {
+    console.log('broadcast')
+    let contents = fs.readFileSync('config.json', 'utf8');
+    let addresses = JSON.parse(contents);
+    addresses['servers'].forEach(address => {
+        const path_name = `${address['url']}/${address['endpoint']}/merge`
+        request.post(path_name, {
+            json: JSON.stringify(data)
+          }, (error, res, body) => {
+            if (error) {
+              console.error(error)
+              return
+            }
+          })
+    });
+}
 
 function getTodo(params) {
     const method = params.__ow_method
+    const path = params.__ow_path
+
+    // Merge endpoint
+    if (path == '/merge') {
+        let changes = JSON.parse(params.__ow_body)
+        todos = Automerge.applyChanges(todos, changes.body)
+        console.log(Automerge.getHistory(todos).map(state => state.change.message))
+        return {
+            statusCode: 200
+        }
+    }
+
     if (method == 'get') {
+        console.log('get')
         return {
             body: {
                 todo: todos
@@ -42,6 +47,7 @@ function getTodo(params) {
         }
     }
     else if (method == 'post') {
+        console.log('inside post')
         const user_id = params.user_id;
         const description = params.description;
         const done = params.done;
@@ -51,7 +57,7 @@ function getTodo(params) {
             'description': description,
             'done': done
         }
-        todos = Automerge.change(todos, 'Add Todo', todos => {
+        new_todos = Automerge.change(todos, 'Add Todo', todos => {
             if (todos.hasOwnProperty(user_id)) {
                 todos[user_id].push(todo)
             } else {
@@ -59,6 +65,11 @@ function getTodo(params) {
                 todos[user_id].push(todo)
             }  
         });
+        let changes = Automerge.getChanges(todos, new_todos)
+        todos = new_todos
+        broadcast({
+            body: changes
+        })
         return {
             body: {
                 task_id: task_id
@@ -81,9 +92,14 @@ function getTodo(params) {
         if (todos.hasOwnProperty(user_id)) {
             const deleteIndex = todos[user_id].findIndex( ({ id }) => id == task_id );
             if (deleteIndex != -1) {
-                todos = Automerge.change(todos, 'Delete Todo', todos => {
+                new_todos = Automerge.change(todos, 'Delete Todo', todos => {
                     todos = todos[user_id].splice(deleteIndex, 1)
                 });
+                let changes = Automerge.getChanges(todos, new_todos)
+                todos = new_todos
+                broadcast({
+                    body: changes
+                })
                 return {
                     body: {
                         Response: todos[user_id]
@@ -125,7 +141,7 @@ function getTodo(params) {
         if (todos.hasOwnProperty(user_id)) {
             const updateIndex = todos[user_id].findIndex( ({ id }) => id == task_id );
             if (updateIndex != -1) {
-                todos = Automerge.change(todos, 'Update Todo', todos => {
+                new_todos = Automerge.change(todos, 'Update Todo', todos => {
                     if (params.hasOwnProperty('description')) {
                         todos[user_id][updateIndex].description = params.description
                     }
@@ -133,6 +149,11 @@ function getTodo(params) {
                         todos[user_id][updateIndex].done = params.done
                     }
                 });
+                let changes = Automerge.getChanges(todos, new_todos)
+                todos = new_todos
+                broadcast({
+                    body: changes
+                })
                 return {
                     body: {
                         Response: todos[user_id][updateIndex]
