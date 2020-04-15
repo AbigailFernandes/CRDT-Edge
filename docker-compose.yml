@@ -5,4 +5,4 @@ services:
     image: 'redis:5-alpine'
     command: redis-server --requirepass 2020coronavirus2020
     ports:
-      - '6379:6379'
+      - '6380:6379'

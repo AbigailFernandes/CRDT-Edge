@@ -16,7 +16,7 @@ routes(app)
 /**
  * REDIS config
  */
-const redisPort = 6379;
+const redisPort = 6380;
 const redisPassword = "2020coronavirus2020";
 //////////
 
