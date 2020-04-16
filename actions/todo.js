@@ -1,6 +1,9 @@
+<<<<<<< HEAD
 const Automerge = require("automerge");
 const uuid = require("uuid");
 const redis = require("redis");
+const fs = require('fs');
+const request = require('request');
 
 const uuidv4 = uuid.v4;
 
@@ -27,8 +30,36 @@ redisClient.on("connect", () => {
 
 // todos = Automerge.from(todos)
 
+function broadcast(data) {
+    console.log('broadcast')
+    let contents = fs.readFileSync('config.json', 'utf8');
+    let addresses = JSON.parse(contents);
+    addresses['servers'].forEach(address => {
+        const path_name = `${address['url']}/${address['endpoint']}/merge`
+        request.post(path_name, {
+            json: JSON.stringify(data)
+          }, (error, res, body) => {
+            if (error) {
+              console.error(error)
+              return
+            }
+          })
+    });
+}
+
 async function getTodo(params) {
   const method = params.__ow_method;
+  const path = params.__ow_path
+
+  // Merge endpoint
+  if (path == '/merge') {
+      let changes = JSON.parse(params.__ow_body)
+      todos = Automerge.applyChanges(todos, changes.body)
+      console.log(Automerge.getHistory(todos).map(state => state.change.message))
+      return {
+          statusCode: 200
+      }
+  }
 
   todos = await new Promise((resolve, reject) => {
     redisClient.get("todos", (err, res) => {
@@ -73,7 +104,7 @@ async function getTodo(params) {
       description: description,
       done: done,
     };
-    todos = Automerge.change(todos, "Add Todo", (todos) => {
+    new_todos = Automerge.change(todos, "Add Todo", (todos) => {
       if (todos.hasOwnProperty(user_id)) {
         todos[user_id].push(todo);
       } else {
@@ -81,6 +112,11 @@ async function getTodo(params) {
         todos[user_id].push(todo);
       }
     });
+    let changes = Automerge.getChanges(todos, new_todos)
+    todos = new_todos
+    broadcast({
+        body: changes
+    })
 
     //update in cache...should be blocking.......
     setTodosInCache(todos);
@@ -106,9 +142,14 @@ async function getTodo(params) {
     if (todos.hasOwnProperty(user_id)) {
       const deleteIndex = todos[user_id].findIndex(({ id }) => id == task_id);
       if (deleteIndex != -1) {
-        todos = Automerge.change(todos, "Delete Todo", (todos) => {
+        new_todos = Automerge.change(todos, "Delete Todo", (todos) => {
           todos = todos[user_id].splice(deleteIndex, 1);
         });
+        let changes = Automerge.getChanges(todos, new_todos)
+        todos = new_todos
+        broadcast({
+            body: changes
+        })
         //update in cache...should be blocking.......
         setTodosInCache(todos);
         return {
@@ -161,7 +202,6 @@ async function getTodo(params) {
 
         //update in cache...should be blocking.......
         setTodosInCache(todos);
-
         return {
           body: {
             Response: todos[user_id][updateIndex],
