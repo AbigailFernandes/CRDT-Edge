@@ -1,0 +1,20 @@
+../start-redis.sh
+sudo npm install
+zip -r action.zip *
+wsk -i action create todo --kind nodejs:10 action.zip --web true
+wsk -i action get todo --url
+wsk -i api create /api/todo get todo --apiname "todo"
+wsk -i api create /api/todo post todo --apiname "todo"
+wsk -i api create /api/todo delete todo --apiname "todo"
+wsk -i api create /api/todo put todo --apiname "todo"
+
+
+
+#cat todo_id.sh 
+#wsk -i action create pack --kind nodejs:8 action.zip --web true 
+#wsk -i action invoke pack -b -p payload "Hello" --result
+#wsk -i api create /api/image get image --response-type http --apiname "image"
+#wsk -i api create /api/sha get pack --response-type http --apiname "sha"
+#rm action.zip
+#rm -rf node-modules
+#wanip
