@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 const Automerge = require("automerge");
 const uuid = require("uuid");
 const redis = require("redis");
