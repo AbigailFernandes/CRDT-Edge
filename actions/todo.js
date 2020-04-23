@@ -51,16 +51,6 @@ async function getTodo(params) {
   const method = params.__ow_method;
   const path = params.__ow_path
 
-  // Merge endpoint
-  if (path == '/merge') {
-      let changes = JSON.parse(params.__ow_body)
-      todos = Automerge.applyChanges(todos, changes.body)
-      console.log(Automerge.getHistory(todos).map(state => state.change.message))
-      return {
-          statusCode: 200
-      }
-  }
-
   todos = await new Promise((resolve, reject) => {
     redisClient.get("todos", (err, res) => {
       if (err) {
@@ -85,6 +75,16 @@ async function getTodo(params) {
       });
     });
   };
+
+  // Merge endpoint
+  if (path == '/merge') {
+      let changes = JSON.parse(params.__ow_body)
+      todos = Automerge.applyChanges(todos, changes.body)
+      console.log(Automerge.getHistory(todos).map(state => state.change.message))
+      return {
+          statusCode: 200
+      }
+  }
 
   if (method == "get") {
     //check if redisclient is null or undefined
