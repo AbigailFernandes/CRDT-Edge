@@ -20,17 +20,14 @@ const redisClient = redis.createClient({
 });
 
 redisClient.on("error", (err) => {
-  console.log("Error: " + err);
 });
 
 redisClient.on("connect", () => {
-  console.info("Redis client connected");
 });
 
 // todos = Automerge.from(todos)
 
 function broadcast(data) {
-    console.log('broadcast')
     let contents = fs.readFileSync('config.json', 'utf8');
     let addresses = JSON.parse(contents);
     addresses['servers'].forEach(address => {
@@ -55,7 +52,6 @@ async function getTodo(params) {
       if (err) {
         resolve(Automerge.init());
       } else {
-        console.log(res);
         if (res == null) resolve(Automerge.init());
         else resolve(Automerge.load(res));
       }
