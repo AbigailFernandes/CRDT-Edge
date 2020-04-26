@@ -1,8 +1,8 @@
 const Automerge = require("automerge");
 const uuid = require("uuid");
 const redis = require("redis");
-const fs = require('fs');
-const request = require('request');
+const fs = require("fs");
+const request = require("request");
 
 const uuidv4 = uuid.v4;
 
@@ -19,72 +19,89 @@ const redisClient = redis.createClient({
   password: redisPassword,
 });
 
-redisClient.on("error", (err) => {
-});
+redisClient.on("error", (err) => {});
 
-redisClient.on("connect", () => {
-});
+redisClient.on("connect", () => {});
 
 // todos = Automerge.from(todos)
 
-function broadcast(data) {
-    let contents = fs.readFileSync('config.json', 'utf8');
-    let addresses = JSON.parse(contents);
-    addresses['servers'].forEach(address => {
-        const path_name = `${address['url']}/${address['endpoint']}/merge`
-        request.post(path_name, {
-            json: JSON.stringify(data)
-          }, (error, res, body) => {
-            if (error) {
-              console.error(error)
-              return
-            }
-          })
-    });
+function broadcast(data, endpoint) {
+  let contents = fs.readFileSync("config.json", "utf8");
+  let addresses = JSON.parse(contents);
+  addresses["servers"].forEach((address) => {
+    const path_name = `${address["url"]}/${address["endpoint"]}/${endpoint}`;
+    request.post(
+      path_name,
+      {
+        json: JSON.stringify(data),
+      },
+      (error, res, body) => {
+        if (error) {
+          console.error(error);
+          return;
+        }
+      }
+    );
+  });
 }
+
+setTodosInCache = async (todos) => {
+  await new Promise((resolve, reject) => {
+    redisClient.set("todos", Automerge.save(todos), (err, res) => {
+      if (err) {
+        console.log("it is a disaster...");
+        reject();
+      } else {
+        resolve();
+      }
+    });
+  });
+};
 
 async function getTodo(params) {
   const method = params.__ow_method;
-  const path = params.__ow_path
+  const path = params.__ow_path;
+
+  if (method == "/newbroadcast") {
+    boradcastedTodos = JSON.parse(params.__ow_body);
+    console.log(boradcastedTodos);
+    setTodosInCache(boradcastedTodos);
+    return;
+  }
 
   todos = await new Promise((resolve, reject) => {
     redisClient.get("todos", (err, res) => {
       if (err) {
-        resolve(Automerge.init());
+        //broadcast new document
+        console.log("Got an error from redis...creating and broadcast");
+        doc = Automerge.init();
+        broadcast(Automerge.save(doc), "newbroadcast");
+        resolve(doc);
       } else {
-	console.log(res)      
-        if (res == null) resolve(Automerge.init());
-        else resolve(Automerge.load(res));
+        console.log(res);
+        if (res == null) {
+          console.log("Got a null from redis...creating and broadcast")
+          doc = Automerge.init();
+          broadcast(Automerge.save(doc), "newbroadcast");
+          resolve(doc);
+        } else resolve(Automerge.load(res));
       }
     });
   });
 
-  setTodosInCache = async (todos) => {
-    await new Promise((resolve, reject) => {
-      redisClient.set("todos", Automerge.save(todos), (err, res) => {
-        if (err) {
-          console.log("it is a disaster...");
-          reject();
-        } else {
-          resolve();
-        }
-      });
-    });
-  };
-
   // Merge endpoint
-  if (path == '/merge') {
-      let changes = JSON.parse(params.__ow_body)
-      console.log(typeof(todos))
-      console.log(todos)
-      console.log(changes.body)
-      todos = Automerge.applyChanges(todos, changes.body)
-      console.log(todos)
-      setTodosInCache(todos);
-      console.log("Merge triggered")
-      return {
-          statusCode: 200
-      }
+  if (path == "/merge") {
+    let changes = JSON.parse(params.__ow_body);
+    console.log(typeof todos);
+    console.log(todos);
+    console.log(changes.body);
+    todos = Automerge.applyChanges(todos, changes.body);
+    console.log(todos);
+    setTodosInCache(todos);
+    console.log("Merge triggered");
+    return {
+      statusCode: 200,
+    };
   }
 
   if (method == "get") {
@@ -113,11 +130,14 @@ async function getTodo(params) {
         todos[user_id].push(todo);
       }
     });
-    let changes = Automerge.getChanges(todos, new_todos)
-    todos = new_todos
-    broadcast({
-        body: changes
-    })
+    let changes = Automerge.getChanges(todos, new_todos);
+    todos = new_todos;
+    broadcast(
+      {
+        body: changes,
+      },
+      "merge"
+    );
 
     //update in cache...should be blocking.......
     setTodosInCache(todos);
@@ -146,11 +166,14 @@ async function getTodo(params) {
         new_todos = Automerge.change(todos, "Delete Todo", (todos) => {
           todos = todos[user_id].splice(deleteIndex, 1);
         });
-        let changes = Automerge.getChanges(todos, new_todos)
-        todos = new_todos
-        broadcast({
-            body: changes
-        })
+        let changes = Automerge.getChanges(todos, new_todos);
+        todos = new_todos;
+        broadcast(
+          {
+            body: changes,
+          },
+          "merge"
+        );
         //update in cache...should be blocking.......
         setTodosInCache(todos);
         return {
