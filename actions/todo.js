@@ -15,7 +15,7 @@ const redisPassword = "2020coronavirus2020";
 
 const redisClient = redis.createClient({
   port: redisPort,
-  host: "127.0.0.1",
+  host: "10.128.0.17",
   password: redisPassword,
 });
 
@@ -52,6 +52,7 @@ async function getTodo(params) {
       if (err) {
         resolve(Automerge.init());
       } else {
+	console.log(res)      
         if (res == null) resolve(Automerge.init());
         else resolve(Automerge.load(res));
       }
@@ -74,8 +75,13 @@ async function getTodo(params) {
   // Merge endpoint
   if (path == '/merge') {
       let changes = JSON.parse(params.__ow_body)
+      console.log(typeof(todos))
+      console.log(todos)
+      console.log(changes.body)
       todos = Automerge.applyChanges(todos, changes.body)
+      console.log(todos)
       setTodosInCache(todos);
+      console.log("Merge triggered")
       return {
           statusCode: 200
       }
