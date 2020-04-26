@@ -79,7 +79,7 @@ async function getTodo(params) {
   if (path == '/merge') {
       let changes = JSON.parse(params.__ow_body)
       todos = Automerge.applyChanges(todos, changes.body)
-      console.log(Automerge.getHistory(todos).map(state => state.change.message))
+      setTodosInCache(todos);
       return {
           statusCode: 200
       }
