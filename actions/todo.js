@@ -62,7 +62,7 @@ async function getTodo(params) {
   const method = params.__ow_method;
   const path = params.__ow_path;
 
-  if (method == "/newbroadcast") {
+  if (path == "/newbroadcast") {
     boradcastedTodos = JSON.parse(params.__ow_body);
     console.log(boradcastedTodos);
     setTodosInCache(boradcastedTodos);
