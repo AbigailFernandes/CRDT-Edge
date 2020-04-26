@@ -1,13 +1,8 @@
 {
     "servers": [
         {
-            "url": "https://us-south.functions.cloud.ibm.com/api/v1/web/bith2457%40colorado.edu_dev",
-            "endpoint": "ds/todo1"
-        },
-        {
-            "url": "https://us-south.functions.cloud.ibm.com/api/v1/web/bith2457%40colorado.edu_dev",
-            "endpoint": "ds/todo2"
+            "url": "http://10.128.0.25:9090/api/23bc46b1-71f6--8c54-816aa4f8c502/api/",
+            "endpoint": "todo"
         }
-
     ]
 }
