@@ -25,11 +25,11 @@ redisClient.on("connect", () => {});
 
 // todos = Automerge.from(todos)
 
-function broadcast(data, endpoint) {
+function broadcast(data) {
   let contents = fs.readFileSync("config.json", "utf8");
   let addresses = JSON.parse(contents);
   addresses["servers"].forEach((address) => {
-    const path_name = `${address["url"]}/${address["endpoint"]}/${endpoint}`;
+    const path_name = `${address["url"]}/${address["endpoint"]}/merge`;
     request.post(
       path_name,
       {
@@ -64,29 +64,18 @@ async function getTodo(params) {
     });
   };
 
-  if (path == "/newbroadcast") {
-    boradcastedTodos = params.__ow_body;
-    console.log("Setting in redis", boradcastedTodos);
-    setTodosInCache(boradcastedTodos);
-    return;
-  }
-
   todos = await new Promise((resolve, reject) => {
     redisClient.get("todos", (err, res) => {
       if (err) {
-        //broadcast new document
         console.log("Got an error from redis...creating and broadcast Error:", err);
-        doc = Automerge.init();
-        broadcast(Automerge.save(doc), "newbroadcast");
-        setTodosInCache(doc)
+        doc = Automerge.init('1234-abcd-56789-qrstuv');
+        setTodosInCache(Automerge.save(doc))
         reject(doc);
       } else {
-        console.log(res);
         if (res == null) {
           console.log("Got a null from redis...creating and broadcast")
-          doc = Automerge.init();
-          broadcast(Automerge.save(doc), "newbroadcast");
-          setTodosInCache(doc)
+          doc = Automerge.init('1234-abcd-56789-qrstuv');
+          setTodosInCache(Automerge.save(doc))
           resolve(doc);
         } else resolve(Automerge.load(res));
       }
@@ -139,8 +128,7 @@ async function getTodo(params) {
     broadcast(
       {
         body: changes,
-      },
-      "merge"
+      }
     );
 
     //update in cache...should be blocking.......
@@ -175,8 +163,7 @@ async function getTodo(params) {
         broadcast(
           {
             body: changes,
-          },
-          "merge"
+          }
         );
         //update in cache...should be blocking.......
         setTodosInCache(Automerge.save(todos));
@@ -219,7 +206,7 @@ async function getTodo(params) {
     if (todos.hasOwnProperty(user_id)) {
       const updateIndex = todos[user_id].findIndex(({ id }) => id == task_id);
       if (updateIndex != -1) {
-        todos = Automerge.change(todos, "Update Todo", (todos) => {
+        new_todos = Automerge.change(todos, "Update Todo", (todos) => {
           if (params.hasOwnProperty("description")) {
             todos[user_id][updateIndex].description = params.description;
           }
@@ -227,6 +214,14 @@ async function getTodo(params) {
             todos[user_id][updateIndex].done = params.done;
           }
         });
+
+        let changes = Automerge.getChanges(todos, new_todos);
+        todos = new_todos;
+        broadcast(
+          {
+            body: changes,
+          }
+        );
 
         //update in cache...should be blocking.......
         setTodosInCache(Automerge.save(todos));
