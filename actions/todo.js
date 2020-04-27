@@ -64,7 +64,7 @@ async function getTodo(params) {
 
   if (path == "/newbroadcast") {
     boradcastedTodos = JSON.parse(params.__ow_body);
-    console.log(boradcastedTodos);
+    console.log("Setting in redis", boradcastedTodos);
     setTodosInCache(boradcastedTodos);
     return;
   }
@@ -73,10 +73,10 @@ async function getTodo(params) {
     redisClient.get("todos", (err, res) => {
       if (err) {
         //broadcast new document
-        console.log("Got an error from redis...creating and broadcast");
+        console.log("Got an error from redis...creating and broadcast Error:", err);
         doc = Automerge.init();
         broadcast(Automerge.save(doc), "newbroadcast");
-        resolve(doc);
+        reject(doc);
       } else {
         console.log(res);
         if (res == null) {
