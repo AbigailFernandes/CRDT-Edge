@@ -45,22 +45,24 @@ function broadcast(data, endpoint) {
   });
 }
 
-setTodosInCache = async (todos) => {
-  await new Promise((resolve, reject) => {
-    redisClient.set("todos", todos, (err, res) => {
-      if (err) {
-        console.log("it is a disaster...");
-        reject();
-      } else {
-        resolve();
-      }
-    });
-  });
-};
 
 async function getTodo(params) {
   const method = params.__ow_method;
   const path = params.__ow_path;
+
+  setTodosInCache = async (todos) => {
+    await new Promise((resolve, reject) => {
+      redisClient.set("todos", todos, (err, res) => {
+        if (err) {
+          console.log("it is a disaster...");
+          reject();
+        } else {
+          console.log("Updating finally in Redis")
+          resolve();
+        }
+      });
+    });
+  };
 
   if (path == "/newbroadcast") {
     boradcastedTodos = params.__ow_body;
