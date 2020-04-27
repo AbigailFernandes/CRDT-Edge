@@ -63,7 +63,7 @@ async function getTodo(params) {
   const path = params.__ow_path;
 
   if (path == "/newbroadcast") {
-    boradcastedTodos = JSON.parse(params.__ow_body);
+    boradcastedTodos = params.__ow_body;
     console.log("Setting in redis", boradcastedTodos);
     setTodosInCache(boradcastedTodos);
     return;
