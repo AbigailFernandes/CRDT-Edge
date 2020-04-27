@@ -47,7 +47,7 @@ function broadcast(data, endpoint) {
 
 setTodosInCache = async (todos) => {
   await new Promise((resolve, reject) => {
-    redisClient.set("todos", Automerge.save(todos), (err, res) => {
+    redisClient.set("todos", todos, (err, res) => {
       if (err) {
         console.log("it is a disaster...");
         reject();
@@ -97,7 +97,7 @@ async function getTodo(params) {
     console.log(changes.body);
     todos = Automerge.applyChanges(todos, changes.body);
     console.log(todos);
-    setTodosInCache(todos);
+    setTodosInCache(Automerge.save(todos));
     console.log("Merge triggered");
     return {
       statusCode: 200,
@@ -140,7 +140,7 @@ async function getTodo(params) {
     );
 
     //update in cache...should be blocking.......
-    setTodosInCache(todos);
+    setTodosInCache(Automerge.save(todos));
 
     return {
       body: {
@@ -175,7 +175,7 @@ async function getTodo(params) {
           "merge"
         );
         //update in cache...should be blocking.......
-        setTodosInCache(todos);
+        setTodosInCache(Automerge.save(todos));
         return {
           body: {
             Response: todos[user_id],
@@ -225,7 +225,7 @@ async function getTodo(params) {
         });
 
         //update in cache...should be blocking.......
-        setTodosInCache(todos);
+        setTodosInCache(Automerge.save(todos));
         return {
           body: {
             Response: todos[user_id][updateIndex],
