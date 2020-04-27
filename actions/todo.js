@@ -33,7 +33,7 @@ function broadcast(data, endpoint) {
     request.post(
       path_name,
       {
-        json: JSON.stringify(data),
+        json: data,
       },
       (error, res, body) => {
         if (error) {
