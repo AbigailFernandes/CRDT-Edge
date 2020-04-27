@@ -78,6 +78,7 @@ async function getTodo(params) {
         console.log("Got an error from redis...creating and broadcast Error:", err);
         doc = Automerge.init();
         broadcast(Automerge.save(doc), "newbroadcast");
+        setTodosInCache(doc)
         reject(doc);
       } else {
         console.log(res);
@@ -85,6 +86,7 @@ async function getTodo(params) {
           console.log("Got a null from redis...creating and broadcast")
           doc = Automerge.init();
           broadcast(Automerge.save(doc), "newbroadcast");
+          setTodosInCache(doc)
           resolve(doc);
         } else resolve(Automerge.load(res));
       }
