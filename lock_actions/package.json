@@ -2,7 +2,7 @@
   "name": "get-todo",
   "version": "1.0.0",
   "description": "Serverless on the edge with CRDT",
-  "main": "todo.js",
+  "main": "todo_with_lock.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon ./server.js --exec babel-node --presets babel-preset-env"
