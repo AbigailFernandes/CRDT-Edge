@@ -74,7 +74,7 @@ function getTodo(params) {
   // the string identifier for the resource you want to lock
   var resource = "locks:todos";
   var ttl = 1000;
-  response = async (execute) =>
+  response = async () =>
     await new Promise(resolve, (reject) => {
       redlock.lock(resource, ttl).then(function (lock) {
         setTodosInCache = async (todos) => {
@@ -307,7 +307,7 @@ function getTodo(params) {
         }
       });
     });
-  return response;
+  return response();
 }
 
 exports.main = getTodo;
