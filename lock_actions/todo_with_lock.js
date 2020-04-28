@@ -17,7 +17,7 @@ const redisPassword = "2020coronavirus2020";
 
 const redisClient = redis.createClient({
   port: redisPort,
-  host: "10.128.0.17",
+  host: "10.128.0.27",
   password: redisPassword,
 });
 
