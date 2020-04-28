@@ -87,7 +87,7 @@ async function getTodo(params) {
       console.error("Lock release failed" , err);
     }
 
-    var rr = await using(redlock.disposer(resource, ttl, unlockErrorHandler), function(lock) {
+    var rr = using(redlock.disposer(resource, ttl, unlockErrorHandler), function(lock) {
 
       async function geTodosFromRedis(key) {
         let response = await redisClient.getAsync(key);
