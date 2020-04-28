@@ -3,6 +3,8 @@ const uuid = require("uuid");
 const redis = require("redis");
 const fs = require("fs");
 const request = require("request");
+const Redlock = require('redlock');
+
 
 const uuidv4 = uuid.v4;
 
@@ -19,11 +21,33 @@ const redisClient = redis.createClient({
   password: redisPassword,
 });
 
-redisClient.on("error", (err) => {});
+var redlock = new Redlock(
+	// you should have one client for each independent redis node
+	// or cluster
+	[redisClient],
+	{
+		// the expected clock drift; for more details
+		// see http://redis.io/topics/distlock
+		driftFactor: 0.01, // time in ms
 
-redisClient.on("connect", () => {});
+		// the max number of times Redlock will attempt
+		// to lock a resource before erroring
+		retryCount:  10,
 
-// todos = Automerge.from(todos)
+		// the time in ms between attempts
+		retryDelay:  100, // time in ms
+
+		// the max time in ms randomly added to retries
+		// to improve performance under high contention
+		// see https://www.awsarchitectureblog.com/2015/03/backoff.html
+		retryJitter:  100 // time in ms
+	}
+);
+
+redlock.on('clientError', function(err) {
+	console.error('A redis error has occurred:', err);
+});
+
 
 function broadcast(data) {
   let contents = fs.readFileSync("config.json", "utf8");
@@ -50,8 +74,15 @@ async function getTodo(params) {
   const method = params.__ow_method;
   const path = params.__ow_path;
 
+  // the string identifier for the resource you want to lock
+var resource = 'locks:todos';
+var ttl = 1000;
+response = await redlock.lock(resource, ttl).then(function(lock) {
+
+	
   setTodosInCache = async (todos) => {
     await new Promise((resolve, reject) => {
+      
       redisClient.set("todos", todos, (err, res) => {
         if (err) {
           console.log("it is a disaster...");
@@ -92,6 +123,10 @@ async function getTodo(params) {
     console.log(todos);
     setTodosInCache(Automerge.save(todos));
     console.log("Merge triggered");
+    lock.unlock()
+	.catch(function(err) {
+		console.error("Unlocking the resource", err);
+	});
     return {
       statusCode: 200,
     };
@@ -99,6 +134,10 @@ async function getTodo(params) {
 
   if (method == "get") {
     //check if redisclient is null or undefined
+    lock.unlock()
+	.catch(function(err) {
+		console.error("Unlocking the resource", err);
+	});
     return {
       body: {
         todo: todos,
@@ -133,7 +172,10 @@ async function getTodo(params) {
 
     //update in cache...should be blocking.......
     setTodosInCache(Automerge.save(todos));
-
+  lock.unlock()
+	.catch(function(err) {
+		console.error("Unlocking the resource", err);
+	});
     return {
       body: {
         task_id: task_id,
@@ -167,6 +209,10 @@ async function getTodo(params) {
         );
         //update in cache...should be blocking.......
         setTodosInCache(Automerge.save(todos));
+        lock.unlock()
+	.catch(function(err) {
+		console.error("Unlocking the resource", err);
+	});;
         return {
           body: {
             Response: todos[user_id],
@@ -174,6 +220,10 @@ async function getTodo(params) {
           statusCode: 200,
         };
       } else {
+        lock.unlock()
+	.catch(function(err) {
+		console.error("Unlocking the resource", err);
+	});;
         return {
           body: {
             Response: "Nothing to delete",
@@ -182,6 +232,10 @@ async function getTodo(params) {
         };
       }
     } else {
+      lock.unlock()
+	.catch(function(err) {
+		console.error("Unlocking the resource", err);
+	});
       return {
         body: {
           Error: "Bad Request",
@@ -225,6 +279,10 @@ async function getTodo(params) {
 
         //update in cache...should be blocking.......
         setTodosInCache(Automerge.save(todos));
+        lock.unlock()
+	.catch(function(err) {
+		console.error("Unlocking the resource", err);
+	});;
         return {
           body: {
             Response: todos[user_id][updateIndex],
@@ -232,6 +290,10 @@ async function getTodo(params) {
           statusCode: 200,
         };
       } else {
+        lock.unlock()
+	.catch(function(err) {
+		console.error("Unlocking the resource", err);
+	});;
         return {
           body: {
             Response: "Nothing to update",
@@ -240,6 +302,10 @@ async function getTodo(params) {
         };
       }
     } else {
+      lock.unlock()
+	.catch(function(err) {
+		console.error("Unlocking the resource", err);
+	});;
       return {
         body: {
           Error: "Bad Request",
@@ -248,6 +314,8 @@ async function getTodo(params) {
       };
     }
   }
+});
+  return response;
 }
 
 exports.main = getTodo;
