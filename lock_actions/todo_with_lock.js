@@ -79,6 +79,7 @@ async function getTodo(params) {
   bluebird.promisifyAll(redis.Multi.prototype);
 
   var result = redlock.lock(resource, ttl).then(async function (lock) {
+    
     async function geTodosFromRedis(key) {
       let response = await redisClient.getAsync(key);
       if (response == null) {
@@ -140,7 +141,8 @@ async function getTodo(params) {
         description: description,
         done: done,
       };
-      new_todos = Automerge.change(todos, "Add Todo", (todos) => {
+  
+      new_todos = await Automerge.change(todos, "Add Todo", (todos) => {
         if (todos.hasOwnProperty(user_id)) {
           todos[user_id].push(todo);
         } else {
