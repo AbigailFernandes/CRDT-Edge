@@ -3,6 +3,8 @@ const uuid = require("uuid");
 const redis = require("redis");
 const fs = require("fs");
 const request = require("request");
+const bluebird = require("bluebird");
+
 
 const uuidv4 = uuid.v4;
 
@@ -49,38 +51,30 @@ function broadcast(data) {
 async function getTodo(params) {
   const method = params.__ow_method;
   const path = params.__ow_path;
+  bluebird.promisifyAll(redis.RedisClient.prototype);
+  bluebird.promisifyAll(redis.Multi.prototype);
 
-  setTodosInCache = async (todos) => {
-    await new Promise((resolve, reject) => {
-      redisClient.set("todos", todos, (err, res) => {
-        if (err) {
-          console.log("it is a disaster...");
-          reject();
-        } else {
-          console.log("Updating finally in Redis")
-          resolve();
-        }
-      });
-    });
-  };
 
-  todos = await new Promise((resolve, reject) => {
-    redisClient.get("todos", (err, res) => {
-      if (err) {
-        console.log("Got an error from redis...creating and broadcast Error:", err);
-        doc = Automerge.init('1234-abcd-56789-qrstuv');
-        setTodosInCache(Automerge.save(doc))
-        reject(doc);
-      } else {
-        if (res == null) {
-          console.log("Got a null from redis...creating and broadcast")
-          doc = Automerge.init('1234-abcd-56789-qrstuv');
-          setTodosInCache(Automerge.save(doc))
-          resolve(doc);
-        } else resolve(Automerge.load(res));
-      }
-    });
-  });
+  async function geTodosFromRedis(key) {
+    let response = await redisClient.getAsync(key);
+    if (response == null) {
+      console.log("Got a null from redis...creating and broadcast");
+      doc = Automerge.init("1234-abcd-56789-qrstuv");
+      await redisClient.setAsync("todos", Automerge.save(doc));
+      console.log("Shreshtha - Done inserting fresh document in redis");
+      return doc;
+    } else {
+      console.log(
+        "Shreshtha - Got saved todos in redis ",
+        Automerge.load(response)
+      );
+      return Automerge.load(response);
+    }
+  }
+
+
+  var todos = await geTodosFromRedis("todos");
+  console.log("Shreshtha - Got todos from redis: ", todos);
 
   // Merge endpoint
   if (path == "/merge") {
@@ -90,7 +84,8 @@ async function getTodo(params) {
     console.log(changes.body);
     todos = Automerge.applyChanges(todos, changes.body);
     console.log(todos);
-    setTodosInCache(Automerge.save(todos));
+    // setTodosInCache(Automerge.save(todos));
+    await redisClient.setAsync("todos", Automerge.save(todos));
     console.log("Merge triggered");
     return {
       statusCode: 200,
@@ -132,7 +127,8 @@ async function getTodo(params) {
     );
 
     //update in cache...should be blocking.......
-    setTodosInCache(Automerge.save(todos));
+    // setTodosInCache(Automerge.save(todos));
+    await redisClient.setAsync("todos", Automerge.save(todos));
 
     return {
       body: {
@@ -166,7 +162,8 @@ async function getTodo(params) {
           }
         );
         //update in cache...should be blocking.......
-        setTodosInCache(Automerge.save(todos));
+        // setTodosInCache(Automerge.save(todos));
+        await redisClient.setAsync("todos", Automerge.save(todos));
         return {
           body: {
             Response: todos[user_id],
@@ -224,7 +221,8 @@ async function getTodo(params) {
         );
 
         //update in cache...should be blocking.......
-        setTodosInCache(Automerge.save(todos));
+        // setTodosInCache(Automerge.save(todos));
+        await redisClient.setAsync("todos", Automerge.save(todos));
         return {
           body: {
             Response: todos[user_id][updateIndex],
