@@ -97,7 +97,7 @@ async function getTodo(params) {
     }
 
     var todos = await geTodosFromRedis("todos");
-    console.log("Shreshtha - Got todos from redis: ", rr);
+    console.log("Shreshtha - Got todos from redis: ", todos);
 
     // Merge endpoint
     if (path == "/merge") {
