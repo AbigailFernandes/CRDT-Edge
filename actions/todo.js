@@ -78,11 +78,9 @@ async function getTodo(params) {
 
   // Merge endpoint
   if (path == "/merge") {
-    let changes = JSON.parse(params.__ow_body);
-    console.log(typeof todos);
-    console.log(todos);
-    console.log(changes.body);
-    todos = Automerge.applyChanges(todos, changes.body);
+    let changes = params.body;
+    console.log(params);
+    todos = Automerge.applyChanges(todos, changes);
     console.log(todos);
     // setTodosInCache(Automerge.save(todos));
     await redisClient.setAsync("todos", Automerge.save(todos));
