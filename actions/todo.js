@@ -108,7 +108,7 @@ async function getTodo(params) {
       description: description,
       done: done,
     };
-    new_todos = Automerge.change(todos, "Add Todo", (todos) => {
+    new_todos = await Automerge.change(todos, "Add Todo", (todos) => {
       if (todos.hasOwnProperty(user_id)) {
         todos[user_id].push(todo);
       } else {
@@ -149,7 +149,7 @@ async function getTodo(params) {
     if (todos.hasOwnProperty(user_id)) {
       const deleteIndex = todos[user_id].findIndex(({ id }) => id == task_id);
       if (deleteIndex != -1) {
-        new_todos = Automerge.change(todos, "Delete Todo", (todos) => {
+        new_todos = await Automerge.change(todos, "Delete Todo", (todos) => {
           todos = todos[user_id].splice(deleteIndex, 1);
         });
         let changes = Automerge.getChanges(todos, new_todos);
@@ -201,7 +201,7 @@ async function getTodo(params) {
     if (todos.hasOwnProperty(user_id)) {
       const updateIndex = todos[user_id].findIndex(({ id }) => id == task_id);
       if (updateIndex != -1) {
-        new_todos = Automerge.change(todos, "Update Todo", (todos) => {
+        new_todos = await Automerge.change(todos, "Update Todo", (todos) => {
           if (params.hasOwnProperty("description")) {
             todos[user_id][updateIndex].description = params.description;
           }
